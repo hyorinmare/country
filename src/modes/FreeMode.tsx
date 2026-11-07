@@ -12,9 +12,6 @@ import type { Continent } from '../types';
 
 const DURATIONS = [5, 10, 15, 0]; // minutes, 0 = no limit
 
-/** Free mode only: these countries aren't answers, and their territory is shown as part of another one. */
-const MERGED: Record<string, string> = { ISR: 'PSE' };
-
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 type Phase = 'setup' | 'play' | 'done';
@@ -32,7 +29,7 @@ export default function FreeMode() {
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingRef = useRef<number>();
 
-  const pool = useMemo(() => filterByContinents(COUNTRIES, continents).filter((c) => !(c.id in MERGED)), [continents]);
+  const pool = useMemo(() => filterByContinents(COUNTRIES, continents), [continents]);
   const poolIds = useMemo(() => new Set(pool.map((c) => c.id)), [pool]);
   const foundSet = useMemo(() => new Set(found), [found]);
   const limit = minutes * 60;
@@ -87,12 +84,7 @@ export default function FreeMode() {
     inputRef.current?.select();
     window.setTimeout(() => setShake(false), 450);
     setToast({
-      text:
-        c && foundSet.has(c.id)
-          ? `${c.name}: already found`
-          : c && !(c.id in MERGED)
-            ? `${c.name} isn't in this region`
-            : 'Not recognised',
+      text: c && foundSet.has(c.id) ? `${c.name}: already found` : c ? `${c.name} isn't in this region` : 'Not recognised',
       ok: false,
       n: Date.now(),
     });
@@ -116,7 +108,6 @@ export default function FreeMode() {
       else if (foundSet.has(c.id)) cl[c.id] = phase === 'done' ? 'good' : 'found';
       else if (phase === 'done') cl[c.id] = 'bad';
     }
-    for (const [from, into] of Object.entries(MERGED)) cl[from] = poolIds.has(into) ? cl[into] ?? '' : 'off';
     return cl;
   }, [poolIds, foundSet, phase]);
 
@@ -259,14 +250,7 @@ export default function FreeMode() {
             classes={classes}
             continents={continents}
             className="aspect-[960/500] w-full"
-            tooltip={
-              phase === 'done'
-                ? (raw) => {
-                    const id = MERGED[raw] ?? raw;
-                    return poolIds.has(id) ? BY_ID.get(id)?.name ?? null : null;
-                  }
-                : undefined
-            }
+            tooltip={phase === 'done' ? (id) => (poolIds.has(id) ? BY_ID.get(id)?.name ?? null : null) : undefined}
           />
           {phase === 'done' && missed.length > 0 && (
             <div className="mt-6">

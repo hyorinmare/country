@@ -51,11 +51,23 @@ const byNum = new Map();
 for (const g of geoms) if (g.id) byNum.set(g.id, [...(byNum.get(g.id) ?? []), g]);
 // Shapes without an ISO code, attached to the country they're internationally recognised as part of.
 const BY_NAME = { XK: ['Kosovo'], SO: ['Somaliland'], CY: ['N. Cyprus'] };
+// Countries left out of the game, whose territory (shape, area, borders) is merged into another one.
+const MERGE_INTO = { IL: 'PS' };
+const absorbed = (cca2) => all.filter((x) => MERGE_INTO[x.cca2] === cca2);
+const removedCca3 = new Set(all.filter((x) => MERGE_INTO[x.cca2]).map((x) => x.cca3));
 
 const out = [];
 for (const c of all) {
-  if (!(c.unMember || EXTRA.includes(c.cca2))) continue;
-  const shapes = [...(byNum.get(c.ccn3) ?? []), ...geoms.filter((g) => BY_NAME[c.cca2]?.includes(g.properties.name))];
+  if (!(c.unMember || EXTRA.includes(c.cca2)) || MERGE_INTO[c.cca2]) continue;
+  const extra = absorbed(c.cca2);
+  const shapes = [
+    ...(byNum.get(c.ccn3) ?? []),
+    ...geoms.filter((g) => BY_NAME[c.cca2]?.includes(g.properties.name)),
+    ...extra.flatMap((x) => byNum.get(x.ccn3) ?? []),
+  ];
+  const borders = [...new Set([...(c.borders ?? []), ...extra.flatMap((x) => x.borders ?? [])])].filter(
+    (b) => b !== c.cca3 && !removedCca3.has(b),
+  );
   const name = NAME_OVERRIDE[c.cca2] ?? c.name.common;
   const aliases = new Set([name, c.name.common, c.name.official, ...(EXTRA_ALIASES[c.cca2] ?? [])]);
   for (const a of c.altSpellings) if (a.length > 3 && !/\(/.test(a)) aliases.add(a);
@@ -68,14 +80,14 @@ for (const c of all) {
     capital: c.capital ?? [],
     continent: CONTINENT(c),
     latlng: c.latlng,
-    area: c.area,
+    area: c.area + extra.reduce((sum, x) => sum + x.area, 0),
     hasShape: shapes.length > 0,
     // Extra facts for the learning page.
     official: c.name.official,
     subregion: c.subregion,
     languages: Object.values(c.languages ?? {}),
     currencies: Object.values(c.currencies ?? {}).map((x) => `${x.name}${x.symbol ? ` (${x.symbol})` : ''}`),
-    borders: c.borders ?? [],
+    borders,
     landlocked: c.landlocked,
     demonym: c.demonyms?.eng?.m ?? '',
     callingCode: c.idd?.root ? c.idd.root + (c.idd.suffixes?.length === 1 ? c.idd.suffixes[0] : '') : '',

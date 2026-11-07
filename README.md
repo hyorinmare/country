@@ -1,6 +1,6 @@
 # Globetrotter 🌍
 
-A game for learning the world's 197 countries, with five modes:
+A game for learning the world's 196 countries, with five game modes and a Learn page:
 
 - **Free mode**: name as many countries as you can before the clock runs out.
 - **Find on map**: click the country we name.

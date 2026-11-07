@@ -8,7 +8,7 @@ import type { QuizMode } from '../types';
 import { MODE_INFO } from './ModeScreen';
 
 const MODES: QuizMode[] = ['map', 'flag', 'capital', 'shape'];
-const FREE_TOTAL = COUNTRIES.length - 1; // free mode counts Israel's territory as Palestine
+const FREE_TOTAL = COUNTRIES.length;
 
 function modeMastery(mode: QuizMode) {
   const p = getProgress(mode);
