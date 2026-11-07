@@ -8,6 +8,7 @@ import type { QuizMode } from '../types';
 import { MODE_INFO } from './ModeScreen';
 
 const MODES: QuizMode[] = ['map', 'flag', 'capital', 'shape'];
+const FREE_TOTAL = COUNTRIES.length - 1; // free mode counts Israel's territory as Palestine
 
 function modeMastery(mode: QuizMode) {
   const p = getProgress(mode);
@@ -57,7 +58,7 @@ export default function Home() {
           emoji="⚡"
           title="Free mode"
           blurb="Name as many countries as you can against the clock."
-          footer={freeBest ? `Best (15 min): ${freeBest} / ${COUNTRIES.length}` : 'Can you name all 197?'}
+          footer={freeBest ? `Best (15 min): ${freeBest} / ${FREE_TOTAL}` : `Can you name all ${FREE_TOTAL}?`}
           onClick={() => go('/free')}
           featured
         />
