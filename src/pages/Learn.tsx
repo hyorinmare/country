@@ -107,7 +107,7 @@ export default function Learn() {
           <button
             key={c.id}
             onClick={() => pick(c.id)}
-            className={`glass flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:border-accent/50 ${
+            className={`tile flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:border-accent/50 ${
               c.id === country.id ? '!border-accent ring-1 ring-accent' : ''
             }`}
           >

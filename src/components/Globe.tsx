@@ -14,7 +14,8 @@ export default function Globe({ size = 320 }: { size?: number }) {
 
   useEffect(() => {
     const canvas = ref.current!;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Full retina sharpness isn't needed for a decorative globe; 1.5x keeps phones fast.
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     canvas.width = size * dpr;
     canvas.height = size * dpr;
     const ctx = canvas.getContext('2d')!;
@@ -22,14 +23,23 @@ export default function Globe({ size = 320 }: { size?: number }) {
     const proj = geoOrthographic().scale(size / 2 - 4).translate([size / 2, size / 2]).clipAngle(90);
     const path = geoPath(proj, ctx);
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let raf = 0;
-    let lon = -10;
 
-    const draw = () => {
+    // Theme colours are read once, and again only when the theme changes, not on every frame.
+    let colors = { accent: '', accent2: '', line: '' };
+    const readColors = () => {
       const css = getComputedStyle(document.documentElement);
-      const accent = css.getPropertyValue('--accent').trim();
-      const accent2 = css.getPropertyValue('--accent-2').trim();
-      const line = css.getPropertyValue('--line').trim();
+      colors = {
+        accent: css.getPropertyValue('--accent').trim(),
+        accent2: css.getPropertyValue('--accent-2').trim(),
+        line: css.getPropertyValue('--line').trim(),
+      };
+    };
+    readColors();
+
+    let lon = -10;
+    let last = 0;
+    const draw = () => {
+      const { accent, accent2, line } = colors;
       proj.rotate([lon, -18]);
       ctx.clearRect(0, 0, size, size);
 
@@ -56,14 +66,51 @@ export default function Globe({ size = 320 }: { size?: number }) {
       ctx.globalAlpha = 0.9;
       ctx.fill();
       ctx.globalAlpha = 1;
-
-      if (!reduce) {
-        lon += 0.12;
-        raf = requestAnimationFrame(draw);
-      }
     };
+
+    // Only animate while the globe is on screen and the tab is visible.
+    let raf = 0;
+    let visible = true;
+    const loop = (t: number) => {
+      // Same rotation speed whatever the screen's refresh rate.
+      const dt = last ? Math.min(t - last, 100) : 16;
+      last = t;
+      lon += 0.0075 * dt;
+      draw();
+      raf = requestAnimationFrame(loop);
+    };
+    const start = () => {
+      if (reduce || raf || !visible || document.hidden) return;
+      last = 0;
+      raf = requestAnimationFrame(loop);
+    };
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    const io = new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
+      if (visible) start();
+      else stop();
+    });
+    io.observe(canvas);
+    const onVis = () => (document.hidden ? stop() : start());
+    document.addEventListener('visibilitychange', onVis);
+    const mo = new MutationObserver(() => {
+      readColors();
+      draw();
+    });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
     draw();
-    return () => cancelAnimationFrame(raf);
+    start();
+    return () => {
+      stop();
+      io.disconnect();
+      mo.disconnect();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [size]);
 
   return <canvas ref={ref} style={{ width: size, height: size }} className="max-w-full" aria-hidden />;

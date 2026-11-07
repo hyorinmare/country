@@ -142,7 +142,7 @@ export default function Stats() {
               const card = prog[c.id];
               const lv = level(card);
               return (
-                <div key={c.id} className="glass flex items-center gap-3 rounded-2xl px-3 py-2.5">
+                <div key={c.id} className="tile flex items-center gap-3 rounded-2xl px-3 py-2.5">
                   <Flag cca2={c.cca2} className="w-8" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold">{c.name}</div>

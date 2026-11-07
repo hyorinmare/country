@@ -58,20 +58,33 @@
   --font-display: 'Space Grotesk', 'Inter', ui-sans-serif, sans-serif;
 }
 
+html {
+  background: var(--bg);
+}
 html,
 body {
-  background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 body {
   min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Fixed glow behind everything. A fixed layer scrolls smoothly on phones, unlike background-attachment: fixed. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
     radial-gradient(900px 500px at 110% 10%, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 60%),
     var(--bg);
-  background-attachment: fixed;
+}
+button {
+  touch-action: manipulation;
 }
 
 .glass {
@@ -79,6 +92,35 @@ body {
   border: 1px solid var(--line);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+/* Backdrop blur is expensive on phones: use a near-opaque panel instead. */
+@media (max-width: 767px), (hover: none) {
+  .glass {
+    background: color-mix(in srgb, var(--panel-solid) 92%, transparent);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+/* Lightweight card for long lists (no blur; off-screen cards skip rendering). */
+.tile {
+  background: color-mix(in srgb, var(--panel-solid) 88%, transparent);
+  border: 1px solid var(--line);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 60px;
+}
+
+/* Map container: solid background, no blur, so redrawing the map stays cheap. */
+.map-frame {
+  background: var(--ocean);
+  border: 1px solid var(--line);
+}
+/* While dragging or pinching: cheaper rendering, no graticule. */
+.map-moving .map-country {
+  shape-rendering: optimizeSpeed;
+  transition: none;
+}
+.map-moving .map-graticule {
+  display: none;
 }
 
 .text-gradient {

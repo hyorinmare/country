@@ -72,23 +72,69 @@ const Paths = memo(function Paths({ classes }: { classes: MapClasses }) {
   );
 });
 
+/** Dot markers for tiny countries; their radius is kept constant on screen by the zoom handler. */
+const Markers = memo(function Markers({ classes }: { classes: MapClasses }) {
+  return (
+    <>
+      {MARKERS.map((m) => (
+        <circle
+          key={m.id}
+          cx={m.x}
+          cy={m.y}
+          r={3.6}
+          data-id={m.id}
+          className={`map-country ${classes[m.id] ?? ''}`}
+          style={{ strokeWidth: 1, stroke: 'var(--panel-solid)' }}
+        />
+      ))}
+    </>
+  );
+});
+
 export default function WorldMap({ classes = {}, onCountryClick, focusId, resetKey, tooltip, className = '', continents }: Props) {
   const home = useMemo(() => homeTransform(continents), [continents?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const svgRef = useRef<SVGSVGElement>(null);
+  const gRef = useRef<SVGGElement>(null);
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
-  const [t, setT] = useState({ k: 1, x: 0, y: 0 });
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
     const svg = select(svgRef.current!);
+    const g = gRef.current!;
+    const circles = g.getElementsByTagName('circle');
+    // Zoom/pan writes straight to the DOM (no React re-render), batched to one update per frame.
+    let raf = 0;
+    let pending: { k: number; x: number; y: number } | null = null;
+    let lastK = -1;
+    const apply = () => {
+      raf = 0;
+      if (!pending) return;
+      const { k, x, y } = pending;
+      g.setAttribute('transform', `translate(${x},${y}) scale(${k})`);
+      if (k !== lastK) {
+        lastK = k;
+        const r = String(3.6 / k);
+        for (let i = 0; i < circles.length; i++) circles[i].setAttribute('r', r);
+      }
+    };
     const z = d3zoom<SVGSVGElement, unknown>()
       .scaleExtent([1, 40])
       .translateExtent([[0, 0], [W, H]])
       .clickDistance(4)
-      .on('zoom', (e) => setT({ k: e.transform.k, x: e.transform.x, y: e.transform.y }));
+      .on('start', () => svgRef.current?.classList.add('map-moving'))
+      .on('end', () => svgRef.current?.classList.remove('map-moving'))
+      .on('zoom', (e) => {
+        pending = { k: e.transform.k, x: e.transform.x, y: e.transform.y };
+        // Code-driven zooms (initial framing, d3 transitions) apply now; finger/mouse gestures are batched per frame.
+        if (!e.sourceEvent) {
+          cancelAnimationFrame(raf);
+          apply();
+        } else if (!raf) raf = requestAnimationFrame(apply);
+      });
     svg.call(z).on('dblclick.zoom', null);
     zoomRef.current = z;
     return () => {
+      cancelAnimationFrame(raf);
       svg.on('.zoom', null);
     };
   }, []);
@@ -152,10 +198,9 @@ export default function WorldMap({ classes = {}, onCountryClick, focusId, resetK
   };
 
   const tip = hover && tooltip ? tooltip(hover.id) : null;
-  const markers = useMemo(() => MARKERS, []);
 
   return (
-    <div className={`relative overflow-hidden rounded-3xl glass ${className}`}>
+    <div className={`map-frame relative overflow-hidden rounded-3xl ${className}`}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -164,21 +209,11 @@ export default function WorldMap({ classes = {}, onCountryClick, focusId, resetK
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
       >
-        <g transform={`translate(${t.x},${t.y}) scale(${t.k})`}>
+        <g ref={gRef}>
           <path d={SPHERE} fill="var(--ocean)" />
-          <path d={GRATICULE} fill="none" stroke="var(--line)" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
+          <path className="map-graticule" d={GRATICULE} fill="none" stroke="var(--line)" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
           <Paths classes={classes} />
-          {markers.map((m) => (
-            <circle
-              key={m.id}
-              cx={m.x}
-              cy={m.y}
-              r={3.6 / t.k}
-              data-id={m.id}
-              className={`map-country ${classes[m.id] ?? ''}`}
-              style={{ strokeWidth: 1, stroke: 'var(--panel-solid)' }}
-            />
-          ))}
+          <Markers classes={classes} />
         </g>
       </svg>
       <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">

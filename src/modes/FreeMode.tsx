@@ -257,7 +257,7 @@ export default function FreeMode() {
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted">You missed {missed.length}</h2>
               <div className="flex flex-wrap gap-2">
                 {missed.map((c) => (
-                  <span key={c.id} className="glass inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm">
+                  <span key={c.id} className="tile inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm">
                     <Flag cca2={c.cca2} className="w-5" />
                     {c.name}
                   </span>
