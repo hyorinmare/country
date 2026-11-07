@@ -180,6 +180,7 @@ export function MapQuestion({ api }: { api: QuestionApi }) {
       </div>
       <WorldMap
         classes={classes}
+        continents={settings.reviewIds?.length ? undefined : settings.continents}
         onCountryClick={onClick}
         focusId={feedback && !feedback.correct ? country.id : null}
         resetKey={api.index}

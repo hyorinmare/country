@@ -248,6 +248,7 @@ export default function FreeMode() {
           )}
           <WorldMap
             classes={classes}
+            continents={continents}
             className="aspect-[960/500] w-full"
             tooltip={phase === 'done' ? (id) => (poolIds.has(id) ? BY_ID.get(id)?.name ?? null : null) : undefined}
           />

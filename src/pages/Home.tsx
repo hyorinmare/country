@@ -61,6 +61,14 @@ export default function Home() {
           onClick={() => go('/free')}
           featured
         />
+        <ModeCard
+          i={0.5}
+          emoji="📚"
+          title="Learn"
+          blurb="Browse every country: flag, capital, languages, currency, neighbours and more."
+          footer={`${COUNTRIES.length} country profiles`}
+          onClick={() => go('/learn')}
+        />
         {MODES.map((m, i) => {
           const info = MODE_INFO[m];
           const mm = modeMastery(m);

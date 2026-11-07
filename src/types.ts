@@ -10,6 +10,15 @@ export interface Country {
   latlng: [number, number];
   area: number;
   hasShape: boolean;
+  official: string;
+  subregion: string;
+  languages: string[];
+  currencies: string[];
+  borders: string[];
+  landlocked: boolean;
+  demonym: string;
+  callingCode: string;
+  tld: string;
 }
 
 export type QuizMode = 'map' | 'flag' | 'capital' | 'shape';

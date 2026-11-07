@@ -70,6 +70,16 @@ for (const c of all) {
     latlng: c.latlng,
     area: c.area,
     hasShape: shapes.length > 0,
+    // Extra facts for the learning page.
+    official: c.name.official,
+    subregion: c.subregion,
+    languages: Object.values(c.languages ?? {}),
+    currencies: Object.values(c.currencies ?? {}).map((x) => `${x.name}${x.symbol ? ` (${x.symbol})` : ''}`),
+    borders: c.borders ?? [],
+    landlocked: c.landlocked,
+    demonym: c.demonyms?.eng?.m ?? '',
+    callingCode: c.idd?.root ? c.idd.root + (c.idd.suffixes?.length === 1 ? c.idd.suffixes[0] : '') : '',
+    tld: c.tld?.[0] ?? '',
   });
 }
 // Non-playable shapes (Greenland, W. Sahara, Antarctica...) stay on the map with a null id.

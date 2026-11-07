@@ -5,6 +5,7 @@ import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom';
 import 'd3-transition';
 import { BY_ID, COUNTRIES, FEATURES, FEATURE_BY_ID, isTiny } from '../data/countries';
 import { mainland } from '../lib/geo';
+import type { Continent } from '../types';
 
 const W = 960;
 const H = 500;
@@ -20,6 +21,35 @@ const MARKERS = COUNTRIES.filter(isTiny).map((c) => {
 
 export type MapClasses = Record<string, string>;
 
+/** Rough lon/lat box per continent: [[west, south], [east, north]]. */
+const CONTINENT_BOX: Record<Continent, [[number, number], [number, number]]> = {
+  Africa: [[-19, -36], [52, 38]],
+  Europe: [[-25, 34], [45, 71]],
+  Asia: [[25, -11], [148, 56]],
+  'North America': [[-168, 7], [-52, 72]],
+  'South America': [[-82, -56], [-34, 13]],
+  Oceania: [[110, -48], [180, 20]],
+};
+
+/** Zoom transform that frames the given continents (identity = whole world). */
+function homeTransform(continents?: Continent[]) {
+  if (!continents?.length) return zoomIdentity;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const c of continents) {
+    const [[w, s], [e, n]] = CONTINENT_BOX[c];
+    // Sample the box: the projection curves its edges.
+    for (let i = 0; i <= 8; i++)
+      for (let j = 0; j <= 8; j++) {
+        const p = projection([w + ((e - w) * i) / 8, s + ((n - s) * j) / 8]);
+        if (!p) continue;
+        x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]);
+        x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+      }
+  }
+  const k = Math.max(1, Math.min(8, 0.95 / Math.max((x1 - x0) / W, (y1 - y0) / H)));
+  return zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
+}
+
 interface Props {
   classes?: MapClasses;
   onCountryClick?: (id: string) => void;
@@ -28,6 +58,8 @@ interface Props {
   resetKey?: unknown;
   tooltip?: (id: string) => string | null;
   className?: string;
+  /** Continents to frame by default (and when resetting the zoom). */
+  continents?: Continent[];
 }
 
 const Paths = memo(function Paths({ classes }: { classes: MapClasses }) {
@@ -40,7 +72,8 @@ const Paths = memo(function Paths({ classes }: { classes: MapClasses }) {
   );
 });
 
-export default function WorldMap({ classes = {}, onCountryClick, focusId, resetKey, tooltip, className = '' }: Props) {
+export default function WorldMap({ classes = {}, onCountryClick, focusId, resetKey, tooltip, className = '', continents }: Props) {
+  const home = useMemo(() => homeTransform(continents), [continents?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [t, setT] = useState({ k: 1, x: 0, y: 0 });
@@ -59,6 +92,18 @@ export default function WorldMap({ classes = {}, onCountryClick, focusId, resetK
       svg.on('.zoom', null);
     };
   }, []);
+
+  // Frame the chosen continents straight away, and animate when the selection changes.
+  const firstHome = useRef(true);
+  useEffect(() => {
+    const svg = select(svgRef.current!);
+    if (firstHome.current) {
+      firstHome.current = false;
+      svg.call(zoomRef.current!.transform, home);
+    } else {
+      svg.transition().duration(600).call(zoomRef.current!.transform, home);
+    }
+  }, [home]);
 
   const zoomTo = (k: number, cx: number, cy: number) => {
     const svg = select(svgRef.current!);
@@ -84,8 +129,8 @@ export default function WorldMap({ classes = {}, onCountryClick, focusId, resetK
 
   useEffect(() => {
     if (resetKey === undefined || !zoomRef.current) return;
-    select(svgRef.current!).transition().duration(600).call(zoomRef.current.transform, zoomIdentity);
-  }, [resetKey]);
+    select(svgRef.current!).transition().duration(600).call(zoomRef.current.transform, home);
+  }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const idFromEvent = (e: React.MouseEvent) => (e.target as Element).getAttribute?.('data-id');
 
@@ -140,7 +185,7 @@ export default function WorldMap({ classes = {}, onCountryClick, focusId, resetK
         {[
           ['+', () => zoomBy(1.8)],
           ['−', () => zoomBy(1 / 1.8)],
-          ['⟳', () => select(svgRef.current!).transition().duration(600).call(zoomRef.current!.transform, zoomIdentity)],
+          ['⟳', () => select(svgRef.current!).transition().duration(600).call(zoomRef.current!.transform, home)],
         ].map(([label, fn]) => (
           <button
             key={label as string}

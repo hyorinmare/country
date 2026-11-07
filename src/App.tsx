@@ -4,6 +4,7 @@ import FreeMode from './modes/FreeMode';
 import Home from './pages/Home';
 import ModeScreen from './pages/ModeScreen';
 import Stats from './pages/Stats';
+import Learn from './pages/Learn';
 import { load, save } from './lib/storage';
 import { go, useHashRoute } from './lib/useHashRoute';
 import type { QuizMode } from './types';
@@ -29,6 +30,7 @@ export default function App() {
   if (playMatch && QUIZ_MODES.includes(playMatch[1] as QuizMode)) page = <ModeScreen mode={playMatch[1] as QuizMode} />;
   else if (route === '/free') page = <FreeMode />;
   else if (route === '/stats') page = <Stats />;
+  else if (route === '/learn') page = <Learn />;
   else page = <Home />;
 
   return (
@@ -39,6 +41,9 @@ export default function App() {
           Globetrotter
         </button>
         <nav className="ml-auto flex items-center gap-2">
+          <button onClick={() => go('/learn')} className="rounded-full px-3 py-1.5 text-sm font-medium text-muted hover:text-text">
+            Learn
+          </button>
           <button onClick={() => go('/stats')} className="hidden rounded-full px-3 py-1.5 text-sm font-medium text-muted hover:text-text sm:block">
             Progress
           </button>
